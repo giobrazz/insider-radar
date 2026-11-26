@@ -1,0 +1,44 @@
+name: Insider Radar
+
+on:
+  schedule:
+    - cron: "37 5 * * 2-6"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Scarico il codice del radar
+        uses: actions/checkout@v4
+
+      - name: Preparo Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: "Passo 3 - scarico i Form 4 e aggiorno la memoria"
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: python STEP3.py
+
+      - name: "Passo 4 - punteggio dei cluster"
+        run: python STEP4.py
+
+      - name: "Passo 5 - avviso su Telegram"
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python STEP5.py
+
+      - name: Salvo la memoria aggiornata
+        run: |
+          git config user.name "insider-radar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add acquisti.csv giorni_fatti.txt cluster.csv 2>/dev/null || true
+          git commit -m "Dati aggiornati $(date -u +%Y-%m-%d)" || echo "Niente di nuovo da salvare"
+          git push
